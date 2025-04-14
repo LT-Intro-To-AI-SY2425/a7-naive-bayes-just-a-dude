@@ -70,43 +70,29 @@ class BayesClassifier:
         # which tells mypy we know better and it shouldn't complain at us on this line):
         #for index, filename in enumerate(files, 1): # type: ignore
             #print(f"Training on file {index} of {len(files)}")
-        print('Reading reviews...')
+
+        
         for i in range(len(files)):
+
+            # Storing files[i] as a string 'text', and running that string through self.tokenize() to create a new list of string values, 'token'
             text = self.load_file(os.path.join(self.training_data_directory, files[i]))
             token = self.tokenize(text)
-        # we want to fill pos_freqs and neg_freqs with the correct counts of words from
-        # their respective reviews
-        
-        # for each file, if it is a negative file, update (see the Updating frequencies
-        # set of comments for what we mean by update) the frequencies in the negative
-        # frequency dictionary. If it is a positive file, update (again see the Updating
-        # frequencies set of comments for what we mean by update) the frequencies in the
-        # positive frequency dictionary. If it is neither a postive or negative file,
-        # ignore it and move to the next file (this is more just to be safe; we won't
-        # test your code with neutral reviews)
-            if files[0].startswith(self.neg_file_prefix): 
-                #print('Negative review.')
+    
+            # we want to fill pos_freqs and neg_freqs with the correct counts of words from
+            # their respective reviews
+
+            # Figuring out whether the file is a negative or positive review using 'self.neg_file_prefix' and 'self.pos_file_prefix',
+            # then adding the tokenized list, 'token', to the appropriate dictionary, either 'self.neg_freqs' or 'self.pos_freqs'.
+            if files[i].startswith(self.neg_file_prefix): 
                 self.update_dict(token,self.neg_freqs)
-            elif files[0].startswith(self.pos_file_prefix): 
-                #print('Positive review.')
+
+            elif files[i].startswith(self.pos_file_prefix): 
                 self.update_dict(token,self.pos_freqs)
         print('Model Trained. Testing...')
-        # Updating frequences: to update the frequencies for each file, you need to get
-        # the text of the file, tokenize it, then update the appropriate dictionary for
-        # those tokens. We've asked you to write a function `update_dict` that will make
-        # your life easier here. Write that function first then pass it your list of
-        # tokens from the file and the appropriate dictionary
-        
 
-        # for debugging purposes, it might be useful to print out the tokens and their
-        # frequencies for both the positive and negative dictionaries
+        # Pickling the positive and negative dictionaries to the appropriate files
         self.save_dict(self.neg_freqs,self.neg_filename)
         self.save_dict(self.pos_freqs,self.pos_filename)
-
-        # once you have gone through all the files, save the frequency dictionaries to
-        # avoid extra work in the future (using the save_dict method). The objects you
-        # are saving are self.pos_freqs and self.neg_freqs and the filepaths to save to
-        # are self.pos_filename and self.neg_filename
 
     def classify(self, text: str) -> str:
         """Classifies given text as positive, negative or neutral from calculating the
@@ -120,36 +106,38 @@ class BayesClassifier:
         """
         # TODO: fill me out
 
-        # get a list of the individual tokens that occur in text
-        #TokenList=tokenize(self, text)
+        # Creating a new variable, TokenList, and setting that variable equal to self.tokenize(text) 
+        # to get a list of the individual tokens that occur in text
+        TokenList=self.tokenize(text)
 
-        # create some variables to store the positive and negative probability. since
-        # we will be adding logs of probabilities, the initial values for the positive
-        # and negative probabilities are set to 0
-        TonePositive=0
-        ToneNegative=0
-        # get the sum of all of the frequencies of the features in each document class
-        # (i.e. how many words occurred in all documents for the given class) - this
-        # will be used in calculating the probability of each document class given each
-        # individual feature
-        #TotalWords=
+        # Storing overall Positive and Negative tones of the message as 'OverallTonePositive' and 'OverallToneNegative'
+        OverallTonePositive=0
+        OverallToneNegative=0
 
-        # for each token in the text, calculate the probability of it occurring in a
-        # postive document and in a negative document and add the logs of those to the
-        # running sums. when calculating the probabilities, always add 1 to the numerator
-        # of each probability for add one smoothing (so that we never have a probability
-        # of 0)
+        # Storing the total number of words in both lists as 'TotalWords' to use later on
+        TotalWords=49652
 
+        # Determining the total positive and negative tone values of the message
+        for i in range(len(TokenList)):
 
-        # for debugging purposes, it may help to print the overall positive and negative
-        # probabilities
+            # Adding the tones of each word in the message to the total tones of the message if the word exists in BOTH dictionaries
+            try:
+
+                # Figuring out the tone of each word by checking how many times the word appears in 
+                # each list then dividing that value by the total number of words in that list 
+                # and taking the log of that value to find out the overall tones of the message
+                OverallToneNegative+=math.log((self.neg_freqs[TokenList[i]]+1)/neg_denominator)
+                OverallTonePositive+=math.log((self.pos_freqs[TokenList[i]]+1)/pos_denominator)
+            except KeyError:
+                pass
         
-
-        # determine whether positive or negative was more probable (i.e. which one was
-        # larger)
+        # Determining the net tone of the message and returning that tone
+        if OverallTonePositive-OverallToneNegative>0:
+            OverallTone='Positive'
+        else:
+            OverallTone='Negative'
         
-
-        # return a string of "positive" or "negative"
+        return OverallTone
 
     def load_file(self, filepath: str) -> str:
         """Loads text of given file
@@ -198,6 +186,7 @@ class BayesClassifier:
         """
         tokens = []
         token = ""
+        tokensOptomized=[]
         for c in text:
             if (
                 re.match("[a-zA-Z0-9]", str(c)) != None
@@ -215,7 +204,24 @@ class BayesClassifier:
 
         if token != "":
             tokens.append(token.lower())
-        return tokens
+
+# --- REMOVING ALL WORDS IN 'Sorted_stoplist.txt' FROM TOKENS ---
+
+        # Storing all the values of 'Sorted_stoplist.txt in 'SkipWords'
+        SkipWordsFile=open('Sorted_stoplist.txt','r')
+        SkipWords=SkipWordsFile.readlines()
+
+        # Removing '/n' from the end of each value of SkipWords for contingency with list 'tokens'
+        for i in range(len(SkipWords)):
+            SkipWords[i]=SkipWords[i][:len(SkipWords[i])-2]
+        
+        # Adding each value of tokens to a new list if it is not in SkipWords, then returning that new list
+        for i in range(len(tokens)):
+            if tokens[i] not in SkipWords:
+                tokensOptomized.append(tokens[i])
+        print(tokens,tokensOptomized)
+
+        return tokensOptomized
 
     def update_dict(self, words: List[str], freqs: Dict[str, int]) -> None:
         """Updates given (word -> frequency) dictionary with given words list
@@ -232,12 +238,20 @@ class BayesClassifier:
         # TODO: your work here
         #print('Tokens to update:', words)
         #print(freqs)
+
+
         for i in range(len(words)):
+
+            # Checking if each value of list 'words' is in the dictionary 'freq'
             if words[i] not in freqs:
+
+                # Adding 'words[i]' to 'freqs' with a frequency of 1 if it is not already there
                 freqs[words[i]]=1
             else:
-                #print(freqs[words[i]])
+
+                # Ticking the frequency of 'words[i]' by one within dictionary 'freqs' if it already exists there
                 freqs[words[i]]=int(freqs[words[i]])+1
+
         #print(freqs)
 # remove this line once you've implemented this method
 
@@ -284,10 +298,10 @@ if __name__ == "__main__":
     print(f"P('terrible'| neg) {(b.neg_freqs['terrible']+1)/neg_denominator}")
 
     # # uncomment the below lines once you've implemented `classify`
-    # print("\nThe following should all be positive.")
-    # print(b.classify('I love computer science'))
-    # print(b.classify('this movie is fantastic'))
-    # print("\nThe following should all be negative.")
-    # print(b.classify('rainy days are the worst'))
-    # print(b.classify('computer science is terrible'))
+    print("\nThe following should all be positive.")
+    print(b.classify('I love computer science'))
+    print(b.classify('this movie is fantastic'))
+    print("\nThe following should all be negative.")
+    print(b.classify('rainy days are the worst'))
+    print(b.classify('computer science is terrible'))
 pass
