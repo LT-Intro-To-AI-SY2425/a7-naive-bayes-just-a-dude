@@ -74,12 +74,8 @@ class BayesClassifier:
         
         for i in range(len(files)):
 
-            # Storing files[i] as a string 'text', and running that string through self.tokenize() to create a new list of string values, 'token'
-            text = self.load_file(os.path.join(self.training_data_directory, files[i]))
-            token = self.tokenize(text)
-    
-            # we want to fill pos_freqs and neg_freqs with the correct counts of words from
-            # their respective reviews
+            # Running files[i] through self.tokenize() to create a new list of string values, 'token'
+            token = self.tokenize(self.load_file(os.path.join(self.training_data_directory, files[i])))
 
             # Figuring out whether the file is a negative or positive review using 'self.neg_file_prefix' and 'self.pos_file_prefix',
             # then adding the tokenized list, 'token', to the appropriate dictionary, either 'self.neg_freqs' or 'self.pos_freqs'.
@@ -128,16 +124,16 @@ class BayesClassifier:
                 # and taking the log of that value to find out the overall tones of the message
                 OverallToneNegative+=math.log((self.neg_freqs[TokenList[i]]+1)/neg_denominator)
                 OverallTonePositive+=math.log((self.pos_freqs[TokenList[i]]+1)/pos_denominator)
+
+            # Ignoring the current token if it does not exist in BOTH dictionaries
             except KeyError:
                 pass
         
         # Determining the net tone of the message and returning that tone
         if OverallTonePositive-OverallToneNegative>0:
-            OverallTone='Positive'
+            return 'Positive'
         else:
-            OverallTone='Negative'
-        
-        return OverallTone
+            return 'Negative'
 
     def load_file(self, filepath: str) -> str:
         """Loads text of given file
@@ -208,13 +204,12 @@ class BayesClassifier:
 # --- REMOVING ALL WORDS IN 'Sorted_stoplist.txt' FROM TOKENS ---
 
         # Storing all the values of 'Sorted_stoplist.txt in 'SkipWords'
-        SkipWordsFile=open('Sorted_stoplist.txt','r')
-        SkipWords=SkipWordsFile.readlines()
+        SkipWords=open('Sorted_stoplist.txt','r').readlines()
 
         # Removing '/n' from the end of each value of SkipWords for contingency with list 'tokens'
         for i in range(len(SkipWords)):
-            SkipWords[i]=SkipWords[i][:len(SkipWords[i])-2]
-        
+            SkipWords[i]=SkipWords[i].strip()
+    
         # Adding each value of tokens to a new list if it is not in SkipWords, then returning that new list
         for i in range(len(tokens)):
             if tokens[i] not in SkipWords:
@@ -250,7 +245,7 @@ class BayesClassifier:
             else:
 
                 # Ticking the frequency of 'words[i]' by one within dictionary 'freqs' if it already exists there
-                freqs[words[i]]=int(freqs[words[i]])+1
+                freqs[words[i]]=freqs[words[i]]+1
 
         #print(freqs)
 # remove this line once you've implemented this method
